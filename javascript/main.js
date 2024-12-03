@@ -3,88 +3,124 @@ document.addEventListener("DOMContentLoaded", function () {
   const track = document.querySelector(".gallery-track");
   const items = document.querySelectorAll(".gallery-item");
   const totalItems = items.length;
+  const isMobile = window.innerWidth <= 768;
 
-  let currentPosition = 0;
+  let currentIndex = 0;
   const containerWidth = document.querySelector(
     ".carousel-container"
   ).offsetWidth;
-  const itemWidth = (containerWidth - 60) / 3;
-  const scrollAmount = itemWidth + 30;
-  let isScrolling = false;
-  let lastScrollTime = Date.now();
-  const scrollCooldown = 100;
+  const itemWidth = isMobile ? containerWidth : (containerWidth - 60) / 3;
 
-  for (let i = 0; i < 3; i++) {
+  // Mobile
+  if (isMobile) {
     items.forEach((item) => {
-      const clone = item.cloneNode(true);
-      track.appendChild(clone);
+      item.style.flex = "0 0 100%";
+      item.style.width = "100%";
     });
-    items.forEach((item) => {
-      const clone = item.cloneNode(true);
-      track.insertBefore(clone, track.firstChild);
+
+    const navigation = document.createElement("div");
+    navigation.className = "gallery-navigation";
+
+    const prevButton = document.createElement("button");
+    prevButton.className = "gallery-nav-arrow prev";
+    prevButton.innerHTML = "←";
+    prevButton.addEventListener("click", () => {
+      if (currentIndex > 0) {
+        currentIndex--;
+        updateMobilePosition();
+      }
     });
+
+    const nextButton = document.createElement("button");
+    nextButton.className = "gallery-nav-arrow next";
+    nextButton.innerHTML = "→";
+    nextButton.addEventListener("click", () => {
+      if (currentIndex < totalItems - 1) {
+        currentIndex++;
+        updateMobilePosition();
+      }
+    });
+
+    navigation.appendChild(prevButton);
+    navigation.appendChild(nextButton);
+    document.querySelector("#gallery").appendChild(navigation);
+    track.style.transform = `translateX(0)`;
   }
-
-  currentPosition = -totalItems * scrollAmount;
-  track.style.transform = `translateX(${currentPosition}px)`;
-
-  function updatePosition(direction) {
-    track.style.transition = "transform 0.5s ease";
-
-    if (direction > 0) {
-      currentPosition -= scrollAmount;
-      track.style.transform = `translateX(${currentPosition}px)`;
-
-      if (Math.abs(currentPosition) >= totalItems * 4 * scrollAmount) {
-        setTimeout(() => {
-          track.style.transition = "none";
-          currentPosition = -totalItems * scrollAmount;
-          track.style.transform = `translateX(${currentPosition}px)`;
-          setTimeout(() => {
-            track.style.transition = "transform 0.5s ease";
-          }, 50);
-        }, 500);
-      }
-    } else {
-
-      if (currentPosition < -scrollAmount) {
-        currentPosition += scrollAmount;
-        track.style.transform = `translateX(${currentPosition}px)`;
-      }
+  // Desktop
+  else {
+    for (let i = 0; i < 3; i++) {
+      items.forEach((item) => {
+        const clone = item.cloneNode(true);
+        track.appendChild(clone);
+      });
+      items.forEach((item) => {
+        const clone = item.cloneNode(true);
+        track.insertBefore(clone, track.firstChild);
+      });
     }
+    currentIndex = totalItems;
+    track.style.transform = `translateX(${-currentIndex * (itemWidth)}px)`;
   }
 
-  gallery.addEventListener(
-    "wheel",
-    function (e) {
-      e.preventDefault();
+  function updateMobilePosition() {
+    const itemWidth = document.querySelector(".gallery-item").offsetWidth;
+    track.style.transition = "transform 0.5s ease";
+    track.style.transform = `translateX(${-currentIndex * itemWidth}px)`;
+  }
+  if (!isMobile) {
+    let isScrolling = false;
+    let lastScrollTime = Date.now();
+    const scrollCooldown = 100;
 
-      const currentTime = Date.now();
-      if (currentTime - lastScrollTime < scrollCooldown) return;
+    gallery.addEventListener(
+      "wheel",
+      function (e) {
+        e.preventDefault();
+        const currentTime = Date.now();
+        if (currentTime - lastScrollTime < scrollCooldown) return;
 
-      if (!isScrolling) {
-        isScrolling = true;
-        updatePosition(e.deltaY);
+        if (!isScrolling) {
+          isScrolling = true;
+          const direction = e.deltaY > 0;
 
-        lastScrollTime = currentTime;
-        setTimeout(() => {
-          isScrolling = false;
-        }, scrollCooldown);
-      }
-    },
-    { passive: false }
-  );
+          if (direction) {
+            currentIndex++;
+            track.style.transform = `translateX(${
+              -currentIndex * (itemWidth + 30)
+            }px)`;
 
+            if (currentIndex >= totalItems * 4) {
+              setTimeout(() => {
+                track.style.transition = "none";
+                currentIndex = totalItems;
+                track.style.transform = `translateX(${
+                  -currentIndex * (itemWidth + 30)
+                }px)`;
+                setTimeout(
+                  () => (track.style.transition = "transform 0.5s ease"),
+                  50
+                );
+              }, 500);
+            }
+          } else if (currentIndex > 0) {
+            currentIndex--;
+            track.style.transform = `translateX(${
+              -currentIndex * (itemWidth + 30)
+            }px)`;
+          }
+
+          lastScrollTime = currentTime;
+          setTimeout(() => {
+            isScrolling = false;
+          }, scrollCooldown);
+        }
+      },
+      { passive: false }
+    );
+  }
   window.addEventListener("resize", function () {
-    const newContainerWidth = document.querySelector(
-      ".carousel-container"
-    ).offsetWidth;
-    const newItemWidth = (newContainerWidth - 60) / 3;
-    const newScrollAmount = newItemWidth + 30;
-    const scrolledItems = Math.round(Math.abs(currentPosition) / scrollAmount);
-
-    currentPosition = -scrolledItems * newScrollAmount;
-    track.style.transition = "none";
-    track.style.transform = `translateX(${currentPosition}px)`;
+    if (window.innerWidth <= 768 !== isMobile) {
+      location.reload();
+    }
   });
 });
